@@ -499,28 +499,35 @@ class CscopeCommand(sublime_plugin.TextCommand):
         window = self.view.window()
 
         temp_view = None
-        close_temp_view = True
         active_view = window.active_view()
         active_viewport = active_view.viewport_position()
+        regions = []
+        for region in active_view.sel():
+            regions.append(region)
         initial_views = window.views()
 
         def jump(match):
-            global temp_view
+            nonlocal temp_view
             fname = os.path.normpath(os.path.join(root, match['file']))
             position = '%s:%d:0' % (fname, int(match['line']))
             flags = sublime.ENCODED_POSITION
             prev_temp_view = temp_view
             temp_view = window.open_file(position, flags)
-            if prev_temp_view not in initial_views and prev_temp_view != temp_view:
-                prev_temp_view.close()
+            if prev_temp_view:
+                if prev_temp_view not in initial_views and prev_temp_view != temp_view:
+                    prev_temp_view.close()
 
         def on_select(index):
-            global temp_view
             if index == -1:
-                if temp_view not in initial_views:
+                if temp_view and temp_view not in initial_views:
                     temp_view.close()
                 window.focus_view(active_view)
                 active_view.set_viewport_position(active_viewport)
+                active_view.sel().clear()
+                for region in regions:
+                    active_view.sel().add(region)
+                if regions:
+                    active_view.show(regions[0])
             else:
                 jump(matches[index])
 
